@@ -15,7 +15,7 @@ Ce projet utilise des modèles de traitement du langage naturel pour analyser le
      
      - Sur Windows :
        
-       .\env\Scripts\activate
+       .\.venv\Scripts\activate
 
 2. Installez les dépendances :
 

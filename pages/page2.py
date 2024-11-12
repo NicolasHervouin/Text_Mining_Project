@@ -3,7 +3,7 @@ import pandas as pd
 import spacy
 from dash import html, dcc, register_page, Input, Output, callback
 from utils.def_api_google import obtenir_infos_video_et_commentaires
-from utils.def_utils import get_lang_detector, comment_analysis, word_cloud, polarity_plot, subjectivity_plot
+from utils.def_utils import get_lang_detector, comment_analysis, word_cloud, polarity_plot, subjectivity_plot, polarity_on_vpn
 import time
 import json
 
@@ -11,7 +11,8 @@ API_KEY = os.getenv("API_KEY")
 register_page(__name__, path="/page2")
 
 # Préparation du modèle
-nlp = spacy.load("en_core_web_sm")
+# nlp = spacy.load("en_core_web_sm")
+nlp = spacy.load("fr_core_news_sm")
 nlp.add_pipe("spacytextblob", last=True)
 get_lang_detector(nlp, "language_detector")
 nlp.add_pipe("language_detector")
@@ -43,6 +44,10 @@ layout = html.Div([
         
         dcc.Tab(label='Graph 3: Subjectivity plot', children=[
             dcc.Graph(id='graph3-page1')
+        ]),
+        
+        dcc.Tab(label='Graph 4: Gauge de polarité VPN', children=[
+            dcc.Graph(id='graph4-page1')
         ])
     ])
 ])
@@ -53,7 +58,8 @@ layout = html.Div([
      Output('video-info-content', 'children'),
      Output('graph1-page1', 'figure'),
      Output('graph2-page1', 'figure'),
-     Output('graph3-page1', 'figure')],
+     Output('graph3-page1', 'figure'),
+     Output('graph4-page1', 'figure')],
     [Input('retrieve-comments-button', 'n_clicks')],
     [Input('video-id-input', 'value')]
 )
@@ -73,12 +79,15 @@ def update_graphs(n_clicks, video_id):
             else:
                 # Charger les commentaires et les infos de la vidéo depuis les fichiers
                 with open(f"data/comments/{video_id}.txt", "r", encoding="utf-8") as f:
-                    commentaires = f.readlines()
+                    commentaires = [line.strip() for line in f.readlines()]
                 with open(f"data/infos/{video_id}_infos.json", "r", encoding="utf-8") as json_file:
                     infos_video = json.load(json_file)
                 status_message = "Comments and video info loaded from file."
 
-            df_commentaires = pd.DataFrame(commentaires, columns=['comment'])
+            commentaires = [c for c in commentaires if c]  # Filter out empty strings and None values
+            df_commentaires = pd.DataFrame([{'comment': c} for c in commentaires])
+            df_commentaires = df_commentaires.dropna(subset=['comment'])
+            # print(df_commentaires)
             
             # Analyser les commentaires
             if not os.path.exists(f"data/dataframes/{video_id}.csv"):
@@ -93,6 +102,7 @@ def update_graphs(n_clicks, video_id):
             wordcloud_fig = word_cloud(df_commentaires,nlp)
             polarity_fig = polarity_plot(df_commentaires)
             subjectivity_fig = subjectivity_plot(df_commentaires)
+            gauge_polarity_fig, nb_comments = polarity_on_vpn(df_commentaires)
 
             end_time = time.time()
             elapsed_time = end_time - start_time
@@ -106,13 +116,14 @@ def update_graphs(n_clicks, video_id):
                 html.P(f"Canal : {infos_video['canal']}"),
                 html.P(f"Nombre de vues : {infos_video['vue_count']}"),
                 html.P(f"Nombre de likes : {infos_video['like_count']}"),
-                html.P(f"Nombre de commentaires : {infos_video['comment_count']}")
+                html.P(f"Nombre de commentaires : {infos_video['comment_count']}"),
+                html.P(f"Nombre de commentaires VPN : {nb_comments}"),
             ])
             
-            return status_message, video_info_content, wordcloud_fig, polarity_fig, subjectivity_fig
+            return status_message, video_info_content, wordcloud_fig, polarity_fig, subjectivity_fig, gauge_polarity_fig
 
         except Exception as e:
-            return f"An error occurred: {str(e)}", html.Div(), {}, {}, {}
+            return f"An error occurred: {str(e)}", html.Div(), {}, {}, {}, {}
 
     # Valeurs par défaut si aucun commentaire n'est récupéré
-    return "", html.Div(), {}, {}, {}
+    return "", html.Div(), {}, {}, {}, {}

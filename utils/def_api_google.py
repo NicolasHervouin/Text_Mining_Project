@@ -1,5 +1,4 @@
 import json
-import pandas as pd
 from googleapiclient.discovery import build
     
 def obtenir_infos_video_et_commentaires(video_id, api_key):
@@ -49,8 +48,11 @@ def obtenir_infos_video_et_commentaires(video_id, api_key):
 
     while reponse:
         for item in reponse["items"]:
-            commentaire = item["snippet"]["topLevelComment"]["snippet"]["textDisplay"]
-            commentaires.append(commentaire)
+            commentaire = item["snippet"]["topLevelComment"]["snippet"].get("textDisplay", "")
+            
+            # Assurez-vous que le commentaire est une chaîne et non vide
+            if isinstance(commentaire, str) and commentaire.strip(): 
+                commentaires.append(commentaire.strip())
 
         # Pagination
         if "nextPageToken" in reponse:
@@ -69,10 +71,10 @@ def obtenir_infos_video_et_commentaires(video_id, api_key):
     with open(f"data/infos/{video_id}_infos.json", "w", encoding="utf-8") as json_file:
         json.dump(infos_video, json_file, ensure_ascii=False, indent=4)
     
-    # enregistrement des commentaires dans un fichier
+    # enregistrement des commentaires dans un fichier, sans lignes vides
     with open(f"data/comments/{video_id}.txt", "w", encoding="utf-8") as f:
         for commentaire in commentaires:
-            f.write(commentaire + "\n")
+            if commentaire:  # Vérifie que le commentaire n'est pas vide
+                f.write(commentaire + "\n")
 
     return commentaires, infos_video
-

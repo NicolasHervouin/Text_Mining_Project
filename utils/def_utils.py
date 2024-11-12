@@ -7,6 +7,11 @@ from spacytextblob.spacytextblob import SpacyTextBlob
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 from collections import Counter
+import plotly.graph_objects as go
+from textblob import TextBlob
+import emoji 
+from collections import Counter
+import re
     
 @Language.factory("language_detector")
 def get_lang_detector(nlp, name):
@@ -25,10 +30,43 @@ def clean_comment(comment):
     comment = re.sub(r'[^a-zA-Zа-яА-Я0-9\s]', '', comment)    
     return comment
 
-# Polarity donne le score de sentiment de -1 (négatif) à 1 (positif)
-def get_polarity(comment, nlp):
-    doc = nlp(comment)
-    return doc._.blob.polarity  
+def get_polarity(comment):
+    # Gestion des emojis
+    emoji_dict = {e: emoji.demojize(e) for e in comment if e in emoji.EMOJI_DATA}
+    
+    # Pré-traitement du commentaire
+    for e, desc in emoji_dict.items():
+        comment = comment.replace(e, desc)
+
+    # Utilisation de TextBlob pour analyser la polarité
+    blob = TextBlob(comment)
+    polarity = blob.sentiment.polarity
+
+    # Emojis supplémentaires pour influencer la polarité
+    positive_emojis = [
+        ":smiling_face_with_heart_eyes:", ":thumbs_up:", ":red_heart:", ":grinning_face:", 
+        ":star_struck:", ":clapping_hands:", ":party_popper:", ":sparkling_heart:",
+        ":beaming_face_with_smiling_eyes:", ":face_blowing_a_kiss:", ":winking_face:", ":ok_hand:"
+    ]
+    negative_emojis = [
+        ":angry_face:", ":thumbs_down:", ":crying_face:", ":pouting_face:", 
+        ":face_with_symbols_on_mouth:", ":loudly_crying_face:", ":face_with_steam_from_nose:", 
+        ":disappointed_face:", ":frowning_face:", ":worried_face:", ":broken_heart:", ":persevering_face:"
+    ]
+
+    # Comptage des emojis dans le commentaire
+    emoji_counts = Counter(emoji_dict.values())
+    
+    # Ajustement de la polarité selon les emojis trouvés
+    for emj in positive_emojis:
+        polarity += 0.1 * emoji_counts[emj]
+    for emj in negative_emojis:
+        polarity -= 0.1 * emoji_counts[emj]
+
+    return polarity
+
+
+    
 
  # Subjectivity donne le score de subjectivité de 0 (objectif) à 1 (subjectif)
 def get_subjectivity(comment, nlp):
@@ -44,12 +82,12 @@ def get_assessments(comment, nlp):
 def extract_keywords(text, nlp):
     doc = nlp(text)
     keywords = [token.text for token in doc if token.pos_ in ['NOUN', 'ADJ']]
-    return keywords
+    return keywords 
     
 def comment_analysis(df, nlp, video_id):
     df['clean_comment'] = df['comment'].apply(lambda x: clean_comment(x))
     df['language'] = df['comment'].apply(lambda x: detect_language_spacy(x, nlp))
-    df['polarity'] = df['comment'].apply(lambda x: get_polarity(x, nlp))
+    df['polarity'] = df['comment'].apply(lambda x: get_polarity(x))
     df['subjectivity'] = df['comment'].apply(lambda x: get_subjectivity(x, nlp))
     df['assessments'] = df['comment'].apply(lambda x: get_assessments(x, nlp))
     df['keywords'] = df['comment'].apply(lambda x: extract_keywords(x, nlp))
@@ -100,6 +138,28 @@ def polarity_plot(df):
                     values=[(df['polarity'] > 0).sum(), (df['polarity'] == 0).sum(), (df['polarity'] < 0).sum()],
                     title="Répartition des Sentiments des Commentaires")
     return fig
+
+def polarity_on_vpn(df):
+    df_vpn = df[df['comment'].str.contains('vpn', case=False)]
+    polarity_vpn = df_vpn['polarity'].mean()
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=polarity_vpn,
+        title={"text": "Sentiment Moyen des Commentaires Contenant 'VPN'"},
+        gauge={
+            'axis': {'range': [-1, 1]},
+            'steps': [
+                {'range': [-1, 0], 'color': "red"},
+                {'range': [0, 1], 'color': "green"}
+            ],
+            'threshold': {
+                'line': {'color': "black", 'width': 4},
+                'thickness': 0.75,
+                'value': polarity_vpn
+            }
+        }
+    ))
+    return fig, len(df_vpn)
 
 #Graphique de subjectivité
 def subjectivity_plot(df):

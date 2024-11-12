@@ -4,7 +4,7 @@ app = Dash(__name__, use_pages=True, suppress_callback_exceptions=True)
 app.config.suppress_callback_exceptions = True
 
 app.layout = html.Div([
-    dcc.Location(id='url', refresh=False),  
+    dcc.Location(id='url', refresh=False),
     
     html.Div([
         html.Div(id='nav-bar', style={
@@ -29,15 +29,17 @@ app.layout = html.Div([
     [Input('url', 'pathname')] 
 )
 def update_navbar(pathname):
-    return html.Div([        
+    return html.Div([
+        # Ajout du logo au-dessus du titre
+        html.Img(src='/assets/Logo-NordVPN.png', style={'width': '100%', 'margin-bottom': '20px'}),  
+
         dcc.Link(
-            html.H1("Youtube Comments Analysis", style={'text-align': 'center', 'font-family': 'Arial, sans-serif'}),
+            html.H1("Analyse Des Sponsoring YouTube", style={'text-align': 'center', 'font-family': 'Arial, sans-serif'}),
             href='/',
             style={'text-decoration': 'none'}    
         ),
         dcc.Link('A venir', href='/page1', className='nav-link nav-link-active' if pathname == '/page1' else 'nav-link', style={'display': 'block', 'margin-bottom': '10px'}),
         dcc.Link('Search a video', href='/page2', className='nav-link nav-link-active' if pathname == '/page2' else 'nav-link', style={'display': 'block', 'margin-bottom': '10px'}),
-    #     dcc.Link('Network between 2 movies', href='/page3', className='nav-link nav-link-active' if pathname == '/page3' else 'nav-link', style={'display': 'block', 'margin-bottom': '10px'}),
     ])
 
 if __name__ == '__main__':
