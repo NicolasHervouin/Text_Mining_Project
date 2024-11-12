@@ -109,9 +109,11 @@ def lemmatize(text,nlp):
 
 # Nuage de mots
 def word_cloud(df,nlp):
-    import ast
-    df['POS_Tags'] = df['clean_comment'].apply(lambda x: pos_tag(x, nlp))
-    df['Nouns'] = df['POS_Tags'].apply(lambda tags: [tag[0] for tag in tags if tag[1] == 'NOUN'])   
+    df['clean_comment'] = df['clean_comment'].fillna("")
+
+    
+    df['POS_Tags'] = df['clean_comment'].apply(lambda x: pos_tag(x, nlp) if isinstance(x, str) and x else None)
+    df['Nouns'] = df['POS_Tags'].apply(lambda tags: [tag[0] for tag in tags if tag[1] == 'NOUN'] if tags is not None else [])
     df['Noun_Lemmas'] = df['Nouns'].apply(lambda nouns: lemmatize(' '.join(nouns), nlp))
 
     keywords = df['Noun_Lemmas'].tolist()
@@ -147,7 +149,11 @@ def polarity_on_vpn(df):
         value=polarity_vpn,
         title={"text": "Sentiment Moyen des Commentaires Contenant 'VPN'"},
         gauge={
-            'axis': {'range': [-1, 1]},
+            'axis': {'range': [-1, 1], 'tickwidth': 1, 'tickcolor': "darkblue"},
+            'bar': {'color': "darkblue"},
+            'bgcolor': "white",
+            'borderwidth': 2,
+            'bordercolor': "gray",
             'steps': [
                 {'range': [-1, 0], 'color': "red"},
                 {'range': [0, 1], 'color': "green"}
@@ -159,6 +165,14 @@ def polarity_on_vpn(df):
             }
         }
     ))
+    fig.update_layout(
+        title_font_size=24,
+        font=dict(
+            family="Courier New, monospace",
+            size=18,
+            color="RebeccaPurple"
+        )
+    )
     return fig, len(df_vpn)
 
 #Graphique de subjectivité
