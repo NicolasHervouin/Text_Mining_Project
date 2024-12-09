@@ -1,0 +1,7 @@
+pandas
+spacy
+spacytextblob
+spacy-langdetect
+scikit-learn
+wordcloud
+matplotlib
