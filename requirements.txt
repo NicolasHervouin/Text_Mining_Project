@@ -5,4 +5,4 @@ spacy-langdetect
 scikit-learn
 wordcloud
 matplotlib
-environ
+python-environ
