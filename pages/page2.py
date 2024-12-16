@@ -19,7 +19,7 @@ nlp.add_pipe("language_detector")
 
 # Layout de la page
 layout = html.Div([
-    html.H2("DashBoard 2: Youtube Comments Analysis"),
+    html.H2("DashBoard 2: Analyse Approfondie et Récupération Des Commentaires", style={'textAlign': 'center'}),
     
     # Input pour entrer le VIDEO_ID et bouton pour lancer l'analyse
     html.Div([
@@ -34,19 +34,19 @@ layout = html.Div([
             html.Div(id='video-info-content')
         ]),
         
-        dcc.Tab(label='Graph 1: WordCloud', children=[
+        dcc.Tab(label='Graph 1: Nuage de mots', children=[
             dcc.Graph(id='graph1-page1')
         ]),
         
-        dcc.Tab(label='Graph 2: Polarity plot', children=[
+        dcc.Tab(label='Graph 2: Graphique de la polarité', children=[
             dcc.Graph(id='graph2-page1')
         ]),
         
-        dcc.Tab(label='Graph 3: Subjectivity plot', children=[
-            dcc.Graph(id='graph3-page1')
-        ]),
+        # dcc.Tab(label='Graph 3: Graphique de la subjectivité', children=[
+        #     dcc.Graph(id='graph3-page1')
+        # ]),
         
-        dcc.Tab(label='Graph 4: Gauge de polarité VPN', children=[
+        dcc.Tab(label='Graph 4: Jauge de polarité VPN', children=[
             dcc.Graph(id='graph4-page1')
         ])
     ])
@@ -58,7 +58,7 @@ layout = html.Div([
      Output('video-info-content', 'children'),
      Output('graph1-page1', 'figure'),
      Output('graph2-page1', 'figure'),
-     Output('graph3-page1', 'figure'),
+    #  Output('graph3-page1', 'figure'),
      Output('graph4-page1', 'figure')],
     [Input('retrieve-comments-button', 'n_clicks')],
     [Input('video-id-input', 'value')]
@@ -66,7 +66,7 @@ layout = html.Div([
 def update_graphs(n_clicks, video_id):
     if n_clicks > 0:
         if not video_id or len(video_id) != 11:
-            return "Invalid Video ID. It must be 11 characters long.", html.Div(), {}, {}, {}
+            return "Invalid Video ID. It must be 11 characters long.", html.Div(), {}, {}#, {}
         
         start_time = time.time()
         status_message = "Retrieving comments and video info..."
@@ -101,7 +101,7 @@ def update_graphs(n_clicks, video_id):
         status_message = "Generating graphs..."
         wordcloud_fig = word_cloud(df_commentaires,nlp)
         polarity_fig = polarity_plot(df_commentaires)
-        subjectivity_fig = subjectivity_plot(df_commentaires)
+        # subjectivity_fig = subjectivity_plot(df_commentaires)
         gauge_polarity_fig, nb_comments = polarity_on_vpn(df_commentaires)
 
         end_time = time.time()
@@ -120,10 +120,10 @@ def update_graphs(n_clicks, video_id):
             html.P(f"Nombre de commentaires VPN : {nb_comments}"),
         ])
         
-        return status_message, video_info_content, wordcloud_fig, polarity_fig, subjectivity_fig, gauge_polarity_fig
+        return status_message, video_info_content, wordcloud_fig, polarity_fig, gauge_polarity_fig#, subjectivity_fig
 
         # except Exception as e:
         #     return f"An error occurred: {str(e)}", html.Div(), {}, {}, {}, {}
 
     # Valeurs par défaut si aucun commentaire n'est récupéré
-    return "", html.Div(), {}, {}, {}, {}
+    return "", html.Div(), {}, {}, {}#, {}

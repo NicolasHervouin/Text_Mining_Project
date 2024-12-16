@@ -38,9 +38,9 @@ def update_navbar(pathname):
             href='/',
             style={'text-decoration': 'none'}    
         ),
-        dcc.Link('A venir', href='/page1', className='nav-link nav-link-active' if pathname == '/page1' else 'nav-link', style={'display': 'block', 'margin-bottom': '10px'}),
-        dcc.Link('Search a video', href='/page2', className='nav-link nav-link-active' if pathname == '/page2' else 'nav-link', style={'display': 'block', 'margin-bottom': '10px'}),
+        dcc.Link('Analyse Générale', href='/page1', className='nav-link nav-link-active' if pathname == '/page1' else 'nav-link', style={'display': 'block', 'margin-bottom': '10px'}),
+        dcc.Link('Analyse Approfondie et Récupération Des Commentaires', href='/page2', className='nav-link nav-link-active' if pathname == '/page2' else 'nav-link', style={'display': 'block', 'margin-bottom': '10px'}),
     ])
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=True) 
