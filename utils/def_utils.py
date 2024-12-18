@@ -1,110 +1,32 @@
-import re
 import plotly.express as px
-from spacy.language import Language
-from spacy.tokens import Doc
-from spacy_langdetect import LanguageDetector
-from spacytextblob.spacytextblob import SpacyTextBlob
 from wordcloud import WordCloud
-import matplotlib.pyplot as plt
 from collections import Counter
 import plotly.graph_objects as go
-from textblob import TextBlob
-import emoji 
 from collections import Counter
-import re
 import pandas as pd
 import os
+import nltk
+from transformers import pipeline
+import spacy
+
+nlp = spacy.load("fr_core_news_sm")
+
+nltk.download('punkt_tab')
+classifier = pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment")
+def get_polarity(comment):    
+    tokenized_comment = nltk.sent_tokenize(comment[:512])
+    vs = classifier(tokenized_comment)
+    number = int(vs[0]['label'].split()[0]) 
     
-@Language.factory("language_detector")
-def get_lang_detector(nlp, name):
-    return LanguageDetector()
+    return number
 
-def detect_language_spacy(comment, nlp):
-    doc = nlp(comment)
-    return doc._.language["language"]
-
-def clean_comment(comment):
-    # Supprimer les emojis
-    comment = re.sub(r'[^\w\s,]', '', comment, flags=re.UNICODE)
-    # Retirer les liens
-    comment = re.sub(r'http\S+|www.\S+', '', comment)
-    # Retirer les caractères spéciaux et ponctuation
-    comment = re.sub(r'[^a-zA-Zа-яА-Я0-9\s]', '', comment)    
-    return comment
-
-def get_polarity(comment):
-    # Gestion des emojis
-    emoji_dict = {e: emoji.demojize(e) for e in comment if e in emoji.EMOJI_DATA}
-    
-    # Pré-traitement du commentaire
-    for e, desc in emoji_dict.items():
-        comment = comment.replace(e, desc)
-
-    # Utilisation de TextBlob pour analyser la polarité
-    blob = TextBlob(comment)
-    polarity = blob.sentiment.polarity
-
-    # Emojis supplémentaires pour influencer la polarité
-    positive_emojis = [
-        ":smiling_face_with_heart_eyes:", ":thumbs_up:", ":red_heart:", ":grinning_face:", 
-        ":star_struck:", ":clapping_hands:", ":party_popper:", ":sparkling_heart:",
-        ":beaming_face_with_smiling_eyes:", ":face_blowing_a_kiss:", ":winking_face:", ":ok_hand:"
-    ]
-    negative_emojis = [
-        ":angry_face:", ":thumbs_down:", ":crying_face:", ":pouting_face:", 
-        ":face_with_symbols_on_mouth:", ":loudly_crying_face:", ":face_with_steam_from_nose:", 
-        ":disappointed_face:", ":frowning_face:", ":worried_face:", ":broken_heart:", ":persevering_face:"
-    ]
-
-    # Comptage des emojis dans le commentaire
-    emoji_counts = Counter(emoji_dict.values())
-    
-    # Ajustement de la polarité selon les emojis trouvés
-    for emj in positive_emojis:
-        polarity += 0.1 * emoji_counts[emj]
-    for emj in negative_emojis:
-        polarity -= 0.1 * emoji_counts[emj]
-
-    return polarity
-
- # Subjectivity donne le score de subjectivité de 0 (objectif) à 1 (subjectif)
-def get_subjectivity(comment, nlp):
-    doc = nlp(comment)
-    return doc._.blob.subjectivity 
-
-# Assessments donne le score de sentiment de -1 (négatif) à 1 (positif)
-def get_assessments(comment, nlp):
-    doc = nlp(comment)
-    return doc._.blob.sentiment_assessments.assessments  
-
-# Extraire les noms et adjectifs 
-def extract_keywords(text, nlp):
-    doc = nlp(text)
-    keywords = [token.text for token in doc if token.pos_ in ['NOUN', 'ADJ']]
-    return keywords 
-    
-def comment_analysis(df, nlp, video_id):
-    df['clean_comment'] = df['comment'].apply(lambda x: clean_comment(x))
-    # df['language'] = df['comment'].apply(lambda x: detect_language_spacy(x, nlp))
-    df['polarity'] = df['comment'].apply(lambda x: get_polarity(x))
-    # df['subjectivity'] = df['comment'].apply(lambda x: get_subjectivity(x, nlp))
-    # df['assessments'] = df['comment'].apply(lambda x: get_assessments(x, nlp))
-    # df['keywords'] = df['comment'].apply(lambda x: extract_keywords(x, nlp))
+def comment_analysis(df, video_id):
+    df['Number'] = df['Comment'].apply(lambda x: get_polarity(x))
     
      # enregistrement du df dans un fichier
     df.to_csv(f"data/dataframes/{video_id}.csv", index=False)
     
     return df
-
-#Pos Tagging
-def pos_tag(text,nlp):
-    doc = nlp(text)
-    return [(token.text, token.pos_) for token in doc]
-
-#Lemmatisation
-def lemmatize(text,nlp):
-    doc = nlp(text)
-    return [token.lemma_ for token in doc]
 
 # Nuage de mots
 def word_cloud(df, nlp, keyword_sheet_id=None, want_to_save=False):
@@ -112,7 +34,8 @@ def word_cloud(df, nlp, keyword_sheet_id=None, want_to_save=False):
         keywords_df = pd.read_csv(f"data/keywords/{keyword_sheet_id}.csv")
         counter = Counter(dict(zip(keywords_df['keyword'], keywords_df['count'])))
     else:
-        df = df[df['Comment'].str.contains('vpn', case=False, na=False)]
+        df = df[df['Comment'].str.contains(r'vpn|nord', case=False, na=False)]
+
         keywords = []
         for comment in df['Comment']:
             doc = nlp(comment)
@@ -145,7 +68,7 @@ def polarity_plot(df):
     return fig
 
 def polarity_on_vpn(df):
-    df_vpn = df[df['Comment'].str.contains('vpn', case=False)]
+    df_vpn = df[df['Comment'].str.contains(r'vpn|nord|sponso', case=False, na=False)]
     polarity_vpn = df_vpn['Number'].mean()
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
@@ -200,7 +123,8 @@ def all_comments():
 
 # Evolution de la polarité des commentaires d'un youtubeur
 def polarity_evolution(df):
-    df_tmp = df[df['Comment'].str.contains('vpn', case=False, na=False)]
+    df_tmp = df[df['Comment'].str.contains(r'vpn|nord|sponso', case=False, na=False)]
+
     df_tmp['date_publication'] = pd.to_datetime(df_tmp['date_publication'])
     
     polarity_by_date = df_tmp.groupby(df_tmp['date_publication'].dt.date)['Number'].mean()
@@ -213,11 +137,14 @@ def polarity_evolution(df):
     # Trace pour le nombre de commentaires
     fig.add_trace(go.Bar(x=comments_by_date.index, y=comments_by_date.values,
                          name='Number of Comments', opacity=0.5, yaxis='y2'))
+    # Trace pour la polarité neutre
+    fig.add_trace(go.Scatter(x=polarity_by_date.index, y=[3]*len(polarity_by_date),
+                             mode='lines', name='Neutral Polarity', yaxis='y1', line=dict(dash='dash', color='gray')))
 
     fig.update_layout(
         title='Evolution de la Polarité des Commentaires parlant de NordVPN',
         xaxis_title='Date de Publication de la vidéo',
-        yaxis=dict(title='Polarity Moyenne', side='left', showgrid=False),
+        yaxis=dict(title='Polarity Moyenne', side='left', showgrid=False, range=[1, 5]),
         yaxis2=dict(title='Nombre de commentaires', side='right', overlaying='y', showgrid=False),
         barmode='overlay'
     )
@@ -238,10 +165,14 @@ def polarity_evolution2(df):
     fig.add_trace(go.Bar(x=comments_by_date.index, y=comments_by_date.values,
                          name='Number of Comments', opacity=0.5, yaxis='y2'))
 
+    # Trace pour la polarité neutre
+    fig.add_trace(go.Scatter(x=polarity_by_date.index, y=[3]*len(polarity_by_date),
+                             mode='lines', name='Neutral Polarity', yaxis='y1', line=dict(dash='dash', color='gray')))
+    
     fig.update_layout(
         title='Evolution de la Polarité de tous les Commentaires',
         xaxis_title='Date de Publication de la vidéo',
-        yaxis=dict(title='Polarity Moyenne', side='left', showgrid=False),
+        yaxis=dict(title='Polarity Moyenne', side='left', showgrid=False, range=[1, 5]),
         yaxis2=dict(title='Nombre de commentaires', side='right', overlaying='y', showgrid=False),
         barmode='overlay'
     )
@@ -249,7 +180,8 @@ def polarity_evolution2(df):
 
 # Comparaison des youtubeurs
 def compare_youtubeurs(df, youtubeur):
-    df_tmp = df[df['Comment'].str.contains('vpn', case=False, na=False)]
+    df_tmp = df[df['Comment'].str.contains(r'vpn|nord|sponso', case=False, na=False)]
+
     polarity_by_youtubeur = df_tmp.groupby(df_tmp['youtubeur'])['Number'].mean().sort_values(ascending=False)
     
     colors = ['red' if yt == youtubeur else 'skyblue' for yt in polarity_by_youtubeur.index]
@@ -261,8 +193,20 @@ def compare_youtubeurs(df, youtubeur):
         marker=dict(color=colors)
     ))
     
+    # Ajouter une barre verticale à x=3
+    fig.add_shape(
+        type="line",
+        x0=3,
+        y0=0,
+        x1=3,
+        y1=1,
+        xref='x',
+        yref='paper',
+        line=dict(color="black", width=2, dash="dash")
+    )
+    
     fig.update_layout(
-        title='Comparison of Mean Polarity between YouTubers',
+        title='Comparaison de la Polarité des Commentaires parlant de VPN entre les YouTubers',
         xaxis_title='Mean Polarity',
         xaxis=dict(range=[1, 5]),
         yaxis_title='YouTubers',
@@ -270,3 +214,124 @@ def compare_youtubeurs(df, youtubeur):
     )
     return fig
 
+def compare_youtubeurs2(df, youtubeur):
+    # Dataframe avec par youtubeur et par video_id le nombre de commentaires total et le nombre de commentaires parlant de vpn
+    comments_by_youtubeur = df.groupby(['youtubeur', 'video_id']).size().reset_index(name='count')
+    df_tmp = df[df['Comment'].str.contains(r'vpn|nord|sponso', case=False, na=False)]
+
+    vpn_comments_by_youtubeur = df_tmp.groupby(['youtubeur', 'video_id']).size().reset_index(name='count')
+
+    # merge des deux dataframes
+    df_youtubeurs = pd.merge(comments_by_youtubeur, vpn_comments_by_youtubeur, on=['youtubeur', 'video_id'], suffixes=('_total', '_vpn'))
+    df_youtubeurs['vpn_part'] = df_youtubeurs['count_vpn'] / df_youtubeurs['count_total']
+    
+    # Nombre moyen de commentaires vpn par youtubeur    
+    nb_comments_by_youtubeur = df_youtubeurs.groupby('youtubeur')['count_vpn'].mean().sort_values(ascending=False)
+        
+    # Part moyenne des commentaires parlant de vpn par youtubeur
+    part_comments_by_youtubeur = df_youtubeurs.groupby('youtubeur')['vpn_part'].mean()
+    
+    # Réalignement pour le scatter plot
+    part_comments_by_youtubeur = part_comments_by_youtubeur[nb_comments_by_youtubeur.index]
+    
+    fig = go.Figure()
+    # Trace pour le nombre moyen de commentaires vpn
+    colors_nb = ['red' if yt == youtubeur else 'skyblue' for yt in nb_comments_by_youtubeur.index]
+    fig.add_trace(go.Bar(x=nb_comments_by_youtubeur.index, y=nb_comments_by_youtubeur.values,
+                            name='Mean Number of VPN Comments', yaxis='y1', marker_color=colors_nb))
+    
+    # Trace pour la part moyenne des commentaires vpn
+    fig.add_trace(go.Scatter(x=nb_comments_by_youtubeur.index, y=part_comments_by_youtubeur.values,
+                                mode='lines+markers', name='Mean Part of VPN Comments', yaxis='y2', 
+                                line=dict(color='orange'), connectgaps=False))
+    
+    fig.update_layout(
+        title='Comparaison de la quantité de Commentaire parlant de VPN entre les YouTubers',
+        xaxis_title='YouTubers',
+        yaxis=dict(title='Mean Number of VPN Comments', side='left', showgrid=False),
+        yaxis2=dict(title='Mean Part of VPN Comments', side='right', overlaying='y', showgrid=False),
+        barmode='overlay'
+    )
+    return fig
+
+def bigramme(df):
+    # Filtrer les commentaires contenant des mentions relatives à VPN
+    keywords = ['vpn', 'nordvpn', 'nvpn', 'nord vpn']
+    df = df[df['Comment'].str.contains('|'.join(keywords), case=False, na=False)]
+    
+    bigram = Counter()
+    
+    for comment in df['Comment']:
+        # Traiter chaque commentaire avec spaCy
+        doc = nlp(comment.lower())
+        words = [
+            token.lemma_ for token in doc
+            if token.is_alpha and not token.is_stop  # Conserver seulement les mots significatifs
+        ]
+        
+        # Construire les bigrammes
+        for i in range(len(words) - 1):
+            bigram[(words[i], words[i + 1])] += 1
+    
+    # Trier et sélectionner les 20 bigrammes les plus fréquents
+    bigram = bigram.most_common(20)
+    
+    # Convertir en DataFrame pour une visualisation facile
+    bigram_df = pd.DataFrame(bigram, columns=['bigram', 'count'])
+    bigram_df['bigram'] = bigram_df['bigram'].apply(lambda x: ' '.join(x))  # Joindre les bigrammes en texte
+    
+    # Créer un graphique interactif avec Plotly
+    fig = px.bar(
+        bigram_df,
+        x='bigram',
+        y='count',
+        title="Bigrammes des Commentaires contenant des mots liés à NordVPN",
+        labels={'bigram': 'Bigramme', 'count': 'Nombre d\'occurrences'},
+        text='count'
+    )
+    
+    # Affiner l'apparence du graphique
+    fig.update_layout(xaxis_tickangle=-45)
+    
+    return fig    
+    
+def trigramme(df):
+    # Filtrer les commentaires contenant des mentions relatives à VPN
+    keywords = ['vpn', 'nordvpn', 'nvpn', 'nord vpn']
+    df = df[df['Comment'].str.contains('|'.join(keywords), case=False, na=False)]
+    
+    trigram = Counter()
+    
+    for comment in df['Comment']:
+        # Traiter chaque commentaire avec spaCy
+        doc = nlp(comment.lower())
+        words = [
+            token.lemma_ for token in doc
+            if token.is_alpha and not token.is_stop  # Conserver seulement les mots significatifs
+        ]
+        
+        # Construire les trigrammes
+        for i in range(len(words) - 2):  # Adapté pour trigrammes
+            trigram[(words[i], words[i + 1], words[i + 2])] += 1
+    
+    # Trier et sélectionner les 20 trigrammes les plus fréquents
+    trigram = trigram.most_common(20)
+    
+    # Convertir en DataFrame pour une visualisation facile
+    trigram_df = pd.DataFrame(trigram, columns=['trigram', 'count'])
+    trigram_df['trigram'] = trigram_df['trigram'].apply(lambda x: ' '.join(x))  # Joindre les trigrammes en texte
+    
+    # Créer un graphique interactif avec Plotly
+    fig = px.bar(
+        trigram_df,
+        x='trigram',
+        y='count',
+        title="Trigrammes des Commentaires contenant des mots liés à NordVPN",
+        labels={'trigram': 'Trigramme', 'count': 'Nombre d\'occurrences'},
+        text='count'
+    )
+    
+    # Affiner l'apparence du graphique
+    fig.update_layout(xaxis_tickangle=-45)
+    
+    return fig

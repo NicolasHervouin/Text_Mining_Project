@@ -1,3 +1,4 @@
+dash
 pandas
 spacy
 spacytextblob
@@ -6,3 +7,9 @@ scikit-learn
 wordcloud
 matplotlib
 python-environ
+transformers
+google-api-python-client
+plotly
+tensorflow
+torch
+tf-keras

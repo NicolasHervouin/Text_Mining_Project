@@ -3,7 +3,7 @@ import pandas as pd
 import spacy
 from dash import html, dcc, register_page, Input, Output, callback
 from utils.def_api_google import obtenir_infos_video_et_commentaires
-from utils.def_utils import get_lang_detector, comment_analysis, word_cloud, polarity_plot, subjectivity_plot, polarity_on_vpn
+from utils.def_utils import comment_analysis, word_cloud, polarity_plot, polarity_on_vpn
 import time
 import json
 
@@ -11,11 +11,7 @@ API_KEY = os.getenv("API_KEY")
 register_page(__name__, path="/page2")
 
 # Préparation du modèle
-# nlp = spacy.load("en_core_web_sm")
 nlp = spacy.load("fr_core_news_sm")
-nlp.add_pipe("spacytextblob", last=True)
-get_lang_detector(nlp, "language_detector")
-nlp.add_pipe("language_detector")
 
 # Layout de la page
 layout = html.Div([
@@ -46,7 +42,7 @@ layout = html.Div([
         #     dcc.Graph(id='graph3-page1')
         # ]),
         
-        dcc.Tab(label='Graph 4: Jauge de polarité VPN', children=[
+        dcc.Tab(label='Graph 3: Jauge de polarité VPN', children=[
             dcc.Graph(id='graph4-page1')
         ])
     ])
@@ -85,14 +81,14 @@ def update_graphs(n_clicks, video_id):
             status_message = "Comments and video info loaded from file."
 
         commentaires = [c for c in commentaires if c]  # Filter out empty strings and None values
-        df_commentaires = pd.DataFrame([{'comment': c} for c in commentaires])
-        df_commentaires = df_commentaires.dropna(subset=['comment'])
+        df_commentaires = pd.DataFrame([{'Comment': c} for c in commentaires])
+        df_commentaires = df_commentaires.dropna(subset=['Comment'])
         # print(df_commentaires)
         
         # Analyser les commentaires
         if not os.path.exists(f"data/dataframes/{video_id}.csv"):
             status_message = "Analyzing comments..."
-            df_commentaires = comment_analysis(df_commentaires, nlp, video_id)
+            df_commentaires = comment_analysis(df_commentaires, video_id)
         else:
             df_commentaires = pd.read_csv(f"data/dataframes/{video_id}.csv")
             status_message = "Comment analysis loaded from file."

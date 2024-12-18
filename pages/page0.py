@@ -3,9 +3,10 @@ from dash import html, register_page
 register_page(__name__, "/")
 
 layout = html.Div(
-    [
+    [   
         html.Div(
             [
+                
                 html.H2("Introduction", style={"text-align": "center"}),
                 html.P(
                     """
@@ -13,6 +14,19 @@ layout = html.Div(
                     """,
                     style={"text-align": "justify"}
                 ),
+            ],
+                style={
+                    "padding": "20px",
+                    "border": "1px solid #ccc",
+                    "border-radius": "10px",
+                    "box-shadow": "2px 2px 5px rgba(0,0,0,0.1)",
+                    "margin-bottom": "20px",
+                },
+        ),   
+            
+        html.Div(
+            [        
+                html.H2("Page 1 : Analyse Générale", style={"text-align": "left"}),
                 html.Ul(
                     [
                         html.Li(
@@ -59,7 +73,7 @@ layout = html.Div(
         ),
         html.Div(
             [
-                html.H2("Page 2 : Analyse vidéo par vidéo", style={"text-align": "center"}),
+                html.H2("Page 2 : Analyse vidéo par vidéo", style={"text-align": "left"}),
                 html.P(
                     """
                     Dans cette page, vous pourrez sélectionner une vidéo spécifique et accéder à une analyse détaillée des commentaires qui lui sont associés. Vous aurez également la possibilité d'explorer la polarité des commentaires, les mots-clés récurrents, et bien plus encore.
