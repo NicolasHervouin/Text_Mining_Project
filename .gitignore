@@ -1,5 +1,2 @@
-# *.txt
-*.csv
-*.json
 *pyc
 .env
